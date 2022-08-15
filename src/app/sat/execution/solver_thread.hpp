@@ -80,6 +80,7 @@ public:
         _state_cond.notify();
     }
     void setTerminate() {
+        _solver.setTerminate();
         {
             auto lock = _state_mutex.getLock();
             _terminated = true;
