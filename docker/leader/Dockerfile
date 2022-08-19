@@ -19,7 +19,7 @@ RUN cd lib && bash fetch_and_build_sat_solvers.sh ckly && bash fetch_stxxl.sh &&
 RUN mkdir build
 # I suspect that STXXL and jemalloc don't get along for some reason.
 # Not sure about this, but disabling jemalloc for now
-RUN cd build && cmake -DMALLOB_CERTIFIED_UNSAT=1 -DCMAKE_BUILD_TYPE=RELEASE -DMALLOB_SUBPROC_DISPATCH_PATH=\"./\" -DMALLOB_ASSERT=1 -DMALLOB_USE_GLUCOSE=0 -DMALLOB_USE_ASAN=0 -DMALLOB_USE_JEMALLOC=0 -DMALLOB_JEMALLOC_DIR=/usr/lib/x86_64-linux-gnu -DMALLOB_LOG_VERBOSITY=3 .. && VERBOSE=1 make -j4 && cd ..
+RUN cd build && cmake -DMALLOB_CERTIFIED_UNSAT=1 -DCMAKE_BUILD_TYPE=RELEASE -DMALLOB_SUBPROC_DISPATCH_PATH=\"./\" -DMALLOB_ASSERT=1 -DMALLOB_USE_GLUCOSE=0 -DMALLOB_USE_ASAN=0 -DMALLOB_USE_JEMALLOC=0 -DMALLOB_JEMALLOC_DIR=/usr/lib/x86_64-linux-gnu -DMALLOB_LOG_VERBOSITY=3 -DCMAKE_CXX_FLAGS="-fsanitize=thread -g" -DCMAKE_EXE_LINKER_FLAGS="-ltsan" .. && VERBOSE=1 make -j4 && cd ..
 #RUN find /usr -name '*libjemalloc*'
 
 ################### Extract Mallob in run stage
@@ -33,6 +33,7 @@ WORKDIR /
 COPY --from=builder /mallob/build/mallob mallob
 COPY --from=builder /mallob/build/mallob_sat_process mallob_sat_process
 COPY --from=builder /mallob/build/mallob_process_dispatcher mallob_process_dispatcher
+COPY --from=builder /mallob/lib/cadical/build/cadical cadical
 COPY --chown=ecs-user /docker/leader/run_mallob.sh /competition
 COPY --chown=ecs-user /docker/leader/solver /competition
 COPY --chown=ecs-user /docker/leader/cleanup /competition
@@ -40,3 +41,4 @@ USER ecs-user
 RUN chmod +x /competition/run_mallob.sh
 RUN chmod +x /competition/solver
 RUN chmod +x /competition/cleanup
+RUN echo "PATH=$PATH:/" > /home/ecs-user/.bashrc

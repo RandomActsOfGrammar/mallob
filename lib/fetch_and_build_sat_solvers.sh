@@ -74,7 +74,7 @@ if echo $solvers|grep -q "c" && [ ! -f cadical/libcadical.a ]; then
     echo "Building CaDiCaL ..."
 
     cd cadical
-    ./configure
+    ./configure -fsanitize=thread
     make
     cp build/libcadical.a .
     cd ..
