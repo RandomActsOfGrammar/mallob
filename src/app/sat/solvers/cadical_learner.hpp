@@ -7,18 +7,35 @@
 #include "portfolio_solver_interface.hpp"
 using namespace Mallob;
 
+// HACK! 
+#ifdef MWW_DEBUG_HACK
+  #include <string>
+  #include <sstream>
+  #include <fstream>
+  #include <iostream>
+  #define MWW_COND_EXECUTE(cmd) cmd
+#else
+  #define MWW_COND_EXECUTE(cmd)
+#endif
+
 struct HordeLearner : public CaDiCaL::Learner {
 
 private:
 	const SolverSetup& _setup;
 	LearnedClauseCallback _callback;
 
+	// These should be adjacent for locality.
 	Clause _current_clause;
 	std::vector<int> _current_lits;
 	
 	int _glue_limit;
 	unsigned long _num_produced;
-	
+
+    MWW_COND_EXECUTE(
+		// MWW: awful, temporary hack for debugging.
+		std::ofstream clause_writer;
+	)
+
 public:
 	HordeLearner(const SolverSetup& setup) : _setup(setup), 
 			_current_lits(1+setup.strictClauseLengthLimit, 0), 
@@ -26,8 +43,22 @@ public:
 		
 		_current_clause.begin = _current_lits.data()+1;
 		_current_clause.size = 0;
+
+		MWW_COND_EXECUTE({
+			//
+			// MWW: Terrible, horrible hack for debugging.
+			//
+			std::ostringstream fp_stream;
+			fp_stream << "/logs/" << setup.globalId << "__" << setup.localId << "__learner";
+			std::string fname = fp_stream.str();
+			std::cout << "Opening: " << fname << std::endl;
+			clause_writer.open(fname);
+			clause_writer << setup.jobname << std::endl;
+			//
+			// MWW: End terrible, horrible hack.
+		})
 	}
-	~HordeLearner() override {}
+	~HordeLearner() override { }
 
   	bool learning(int size) override {
 		return size > 0 && size <= _setup.strictClauseLengthLimit;
@@ -38,7 +69,7 @@ public:
 		//LOG(V5_DEBG, "LEARN %i\n", lit);
 
 		if (_current_clause.size < MALLOB_CLAUSE_METADATA_SIZE+1 || lit != 0) {
-			// Received a literal
+			// Received a literal.  Vector is pre-allocated.
 			assert(_current_clause.size < 1+_setup.strictClauseLengthLimit);
 			_current_lits[_current_clause.size++] = lit;
 			return;
@@ -47,12 +78,22 @@ public:
 		// Received a zero - clause is finished
 		_num_produced++;
 
-		//std::string clauseString;
-		//for (size_t i = 0; i < _current_clause.size; ++i)
-		//	clauseString += std::to_string(_current_lits[i]) + " ";
-		//LOG(V5_DEBG, "LEARN clause of total size %i : %s\n", _current_clause.size, clauseString.c_str());
+		MWW_COND_EXECUTE({
+			//
+			// MWW: Terrible, horrible hack for debugging.
+			//
+			std::string clauseString;
+			for (size_t i = 0; i < _current_clause.size; ++i)
+				clauseString += std::to_string(_current_lits[i]) + " ";
+			clause_writer << clauseString << std::endl;
+			clause_writer.flush();
+			//
+			// MWW: End terrible, horrible hack.
+		})
 
 		bool eligible = true;
+
+		// Non-unit clause.
 		if (_current_clause.size > MALLOB_CLAUSE_METADATA_SIZE+1) {
 			assert(_current_clause.size >= MALLOB_CLAUSE_METADATA_SIZE+3); // glue value plus at least two literals
 			// subtract LBD value which was added to the clause length as well
@@ -67,14 +108,19 @@ public:
 				memcpy(&clauseId, _current_lits.data()+1, sizeof(uint64_t));
 				LOG(V5_DEBG, "EXPORT ID=%ld len=%i\n", clauseId, _current_clause.size-2);
 			}
-
 		} else {
-			
+			// Unit clause
 			if (MALLOB_CLAUSE_METADATA_SIZE == 2) {
 				uint64_t clauseId;
 				memcpy(&clauseId, _current_lits.data(), sizeof(uint64_t));
 				LOG(V5_DEBG, "EXPORT ID=%ld len=%i\n", clauseId, 1);
 			}
+			// MWW GIANT NOTE HERE!
+			// Missing case here?  
+			// if metadata size is, say, 3, then nothing gets copied and the code
+			// fails with a quickness!
+			// We need to have an assert here!
+			assert(MALLOB_CLAUSE_METADATA_SIZE == 2 || MALLOB_CLAUSE_METADATA_SIZE == 0);
 			
 			_current_clause.lbd = 1;
 			// copy first k+1 literals at positions 0..k to positions 1..k+1
@@ -83,6 +129,7 @@ public:
 			}
 		}
 		
+		// Relies on _current_clause.begin being set to 1+ array.data().
 		// Export clause (if eligible), reset current clause
 		if (eligible) _callback(_current_clause, _setup.localId);
 		_current_clause.size = 0;

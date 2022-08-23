@@ -178,6 +178,7 @@ void Cadical::unsetSolverSuspend() {
     terminator.unsetSuspend();
 }
 
+
 std::vector<int> Cadical::getSolution() {
 	std::vector<int> result = {0};
 
@@ -194,7 +195,7 @@ std::set<int> Cadical::getFailedAssumptions() {
 			result.insert(assumption);
 
 	return result;
-}
+} 
 
 void Cadical::setLearnedClauseCallback(const LearnedClauseCallback& callback) {
 	learner.setCallback(callback);

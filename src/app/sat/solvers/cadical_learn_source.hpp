@@ -5,17 +5,48 @@
 #include "portfolio_solver_interface.hpp"
 #include "util/sys/atomics.hpp"
 
+// HACK! 
+#ifdef MWW_DEBUG_HACK
+  #include <string>
+  #include <sstream>
+  #include <fstream>
+  #include <iostream>
+  #define MWW_COND_EXECUTE(cmd) cmd
+#else
+  #define MWW_COND_EXECUTE(cmd)
+#endif
+
 struct MallobLearnSource : public CaDiCaL::LearnSource {
 
 private:
     Logger& _log;
     std::function<Mallob::Clause()> _clause_fetcher;
     std::vector<int> _next_clause;
+    MWW_COND_EXECUTE({
+        // MWW: awful, temporary hack for debugging.
+        std::ofstream clause_writer;
+    })
 
 public:
     MallobLearnSource(const SolverSetup& setup, std::function<Mallob::Clause()> clauseFetcher) : 
         _log(*setup.logger),
-        _clause_fetcher(clauseFetcher) {}
+        _clause_fetcher(clauseFetcher) {
+
+		MWW_COND_EXECUTE({
+            //
+            // MWW: Terrible, horrible hack for debugging.
+            //
+            std::ostringstream fp_stream;
+            fp_stream << "/logs/" << setup.globalId << "__" << setup.localId << "__learn_source";
+            std::string fname = fp_stream.str();
+            std::cout << "Opening: " << fname << std::endl;
+            clause_writer.open(fname);
+            clause_writer << setup.jobname << std::endl;
+            //
+            // MWW: End terrible, horrible hack.
+        })
+
+        }
     ~MallobLearnSource() { }
 
     bool hasNextClause() override {
@@ -55,6 +86,17 @@ public:
         return true;
     }
     const std::vector<int>& getNextClause() override {
+		MWW_COND_EXECUTE({
+            //
+            // MWW: Terrible, horrible hack for debugging.
+            //
+            std::string clauseString;
+            for (size_t i = 0; i < _next_clause.size(); ++i)
+                clauseString += std::to_string(_next_clause[i]) + " ";
+            clause_writer << clauseString << std::endl;
+            clause_writer.flush();
+        })
+
         return _next_clause;
     }
 };
