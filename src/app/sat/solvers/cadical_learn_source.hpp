@@ -6,6 +6,7 @@
 #include "util/sys/atomics.hpp"
 
 // HACK! 
+#define MWW_DEBUG_HACK
 #ifdef MWW_DEBUG_HACK
   #include <string>
   #include <sstream>
@@ -22,10 +23,10 @@ private:
     Logger& _log;
     std::function<Mallob::Clause()> _clause_fetcher;
     std::vector<int> _next_clause;
-    MWW_COND_EXECUTE({
+    MWW_COND_EXECUTE(
         // MWW: awful, temporary hack for debugging.
         std::ofstream clause_writer;
-    })
+    )
 
 public:
     MallobLearnSource(const SolverSetup& setup, std::function<Mallob::Clause()> clauseFetcher) : 
@@ -50,7 +51,6 @@ public:
     ~MallobLearnSource() { }
 
     bool hasNextClause() override {
-        
         auto clause = _clause_fetcher();
         if (clause.begin == nullptr) return false;
         
@@ -85,6 +85,7 @@ public:
         }
         return true;
     }
+
     const std::vector<int>& getNextClause() override {
 		MWW_COND_EXECUTE({
             //

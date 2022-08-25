@@ -8,6 +8,7 @@
 using namespace Mallob;
 
 // HACK! 
+#define MWW_DEBUG_HACK
 #ifdef MWW_DEBUG_HACK
   #include <string>
   #include <sstream>
@@ -35,10 +36,12 @@ private:
 		// MWW: awful, temporary hack for debugging.
 		std::ofstream clause_writer;
 	)
+	const int GLUE_SIZE = 1;
+	const int CLAUSE_ADDITIONS = GLUE_SIZE + MALLOB_CLAUSE_METADATA_SIZE; 
 
 public:
 	HordeLearner(const SolverSetup& setup) : _setup(setup), 
-			_current_lits(1+setup.strictClauseLengthLimit, 0), 
+			_current_lits(CLAUSE_ADDITIONS+setup.strictClauseLengthLimit, 0), 
 			_glue_limit(_setup.strictLbdLimit) {
 		
 		_current_clause.begin = _current_lits.data()+1;
@@ -65,12 +68,14 @@ public:
 	}
 
 	inline void learn(int lit) override {
-
 		//LOG(V5_DEBG, "LEARN %i\n", lit);
-
-		if (_current_clause.size < MALLOB_CLAUSE_METADATA_SIZE+1 || lit != 0) {
+		if (_current_clause.size < CLAUSE_ADDITIONS || lit != 0) {
 			// Received a literal.  Vector is pre-allocated.
-			assert(_current_clause.size < 1+_setup.strictClauseLengthLimit);
+			if (_current_clause.size >= CLAUSE_ADDITIONS+_setup.strictClauseLengthLimit) {
+				printf("Current clause size: %d is larger than length limit %d", 
+					_current_clause.size, _setup.strictClauseLengthLimit);
+				assert(_current_clause.size < 1+_setup.strictClauseLengthLimit);
+			}
 			_current_lits[_current_clause.size++] = lit;
 			return;
 		} 
@@ -92,6 +97,7 @@ public:
 		})
 
 		bool eligible = true;
+		assert(MALLOB_CLAUSE_METADATA_SIZE == 2 || MALLOB_CLAUSE_METADATA_SIZE == 0);
 
 		// Non-unit clause.
 		if (_current_clause.size > MALLOB_CLAUSE_METADATA_SIZE+1) {
@@ -115,12 +121,6 @@ public:
 				memcpy(&clauseId, _current_lits.data(), sizeof(uint64_t));
 				LOG(V5_DEBG, "EXPORT ID=%ld len=%i\n", clauseId, 1);
 			}
-			// MWW GIANT NOTE HERE!
-			// Missing case here?  
-			// if metadata size is, say, 3, then nothing gets copied and the code
-			// fails with a quickness!
-			// We need to have an assert here!
-			assert(MALLOB_CLAUSE_METADATA_SIZE == 2 || MALLOB_CLAUSE_METADATA_SIZE == 0);
 			
 			_current_clause.lbd = 1;
 			// copy first k+1 literals at positions 0..k to positions 1..k+1

@@ -12,6 +12,7 @@
 
 #include "cadical.hpp"
 
+
 Cadical::Cadical(const SolverSetup& setup)
 	: PortfolioSolverInterface(setup),
 	  solver(new CaDiCaL::Solver), terminator(*setup.logger), 
@@ -20,7 +21,8 @@ Cadical::Cadical(const SolverSetup& setup)
 		  fetchLearnedClause(c, AdaptiveClauseDatabase::ANY);
 		  return c;
 	  }) {
-	
+	// MWW HACK.
+	// solver->set("log", 1);
 	solver->connect_terminator(&terminator);
 	solver->connect_learn_source(&learnSource);
         solver->set("binary", false);

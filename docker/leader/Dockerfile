@@ -4,7 +4,10 @@ USER root
 # SHELL ["/bin/bash", "-c"]
 #  Install required softwares
 RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt install -y cmake build-essential zlib1g-dev libopenmpi-dev wget unzip build-essential zlib1g-dev cmake python3 build-essential gfortran wget curl libjemalloc-dev libjemalloc2 gdb libboost-all-dev
+    && DEBIAN_FRONTEND=noninteractive apt install -y cmake build-essential zlib1g-dev \
+    libopenmpi-dev wget unzip build-essential zlib1g-dev cmake python3 build-essential \
+    gfortran wget curl libjemalloc-dev libjemalloc2 gdb libboost-all-dev
+
 # Install Rust for checking tools.  Necessary for frat_rs.
 # We decided to use drat-trim instead.
 # RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o rustup.sh
@@ -34,7 +37,7 @@ RUN mkdir build
 # To run with thread sanitizer:
 #   After -DMALLOB_LOG-VERBOSITY=3, add -DCMAKE_CXX_FLAGS="-fsanitize=thread -g" -DCMAKE_EXE_LINKER_FLAGS="-ltsan"
 RUN cd build \
-  && cmake -DMALLOB_CERTIFIED_UNSAT=1 -DCMAKE_BUILD_TYPE=RELEASE \
+  && cmake -DMALLOB_CERTIFIED_UNSAT=1 -DCMAKE_BUILD_TYPE=DEBUG \
     -DMALLOB_SUBPROC_DISPATCH_PATH=\"./\" -DMALLOB_ASSERT=1 -DMALLOB_USE_GLUCOSE=0 \
     -DMALLOB_USE_ASAN=0 -DMALLOB_USE_JEMALLOC=1 -DMALLOB_JEMALLOC_DIR=/usr/lib/x86_64-linux-gnu \
     -DMALLOB_LOG_VERBOSITY=3  .. \
@@ -50,7 +53,10 @@ USER root
 RUN DEBIAN_FRONTEND=noninteractive apt install -y libjemalloc-dev libjemalloc2 gdb psmisc
 RUN mkdir logs
 RUN chown ecs-user logs
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt install -y valgrind
 USER ecs-user
+
 WORKDIR /
 # Copy mallob and solver scripts
 COPY --from=builder /mallob/build/mallob mallob
