@@ -81,11 +81,10 @@ class Runner:
 
         return run_list
 
-    # /competition/compose-proofs /dimacs/sample/simple.cnf /logs/combined_hostfile/combined.lrat /logs/combined_hostfile/0/proof.0.frat /logs/combined_hostfile/1/proof.1.frat /logs/combined_hostfile/3/proof.2.frat /logs/combined_hostfile/2/proof.3.frat
     def determine_proof_files(self): 
         rootdir = '/logs/processes'
         proof_files = []
-        for path in glob.glob(f'{rootdir}/*/proof.*.frat'):
+        for path in glob.glob(f'{rootdir}/*/proof.*.lrat'):
             print(f"An expected proof file path is: {path}")
             proof_files.append(path)
 
@@ -166,10 +165,10 @@ if __name__ == "__main__":
                 result = "ERROR"  
             else:
                 runner.logger.info(f"Checker return code was zero.  Check successful!")
-
+    
     # clean up.
     runner.run(['/competition/cleanup'], True)
-
+    
     solver_output = {
         "return_code": output["return_code"],
         "result": result,

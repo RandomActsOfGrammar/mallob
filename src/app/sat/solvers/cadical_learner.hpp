@@ -56,7 +56,7 @@ public:
 			std::string fname = fp_stream.str();
 			std::cout << "Opening: " << fname << std::endl;
 			clause_writer.open(fname);
-			clause_writer << setup.jobname << std::endl;
+			//clause_writer << setup.jobname << std::endl;
 			//
 			// MWW: End terrible, horrible hack.
 		})

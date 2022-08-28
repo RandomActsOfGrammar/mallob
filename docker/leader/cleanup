@@ -8,6 +8,7 @@ function cleanup() {
     pkill -9 mallob
     pkill -9 mallob_sat_process
     rm -rf /dev/shm/edu.kit.mallob.* /tmp/mallob* /competition/mallob_thread_trace_*
+    rm -rf /logs/*
 }
 
 if ls /competition|grep -q mallob_thread_trace; then
